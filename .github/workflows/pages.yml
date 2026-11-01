@@ -3,7 +3,7 @@ name: Deploy docs to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    branches: [master]
     paths:
       - "docs/**"
       # 解説は answer/ のコードを {{#include}} で取り込んでいるので、その変更でも作り直す。
