@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+# 開発環境（Docker コンテナ）に入る。
+#
+#   ./container            コンテナの中のシェルに入る
+#   ./container --rebuild  Docker イメージを作り直してから入る
+#   ./container CMD...     シェルに入らず、コンテナの中で CMD を実行する
+#
+# このディレクトリはコンテナの /work にマウントされる。ファイルの編集は
+# ホストの好きなエディタで行い、ビルドと実行はコンテナの中で行う。
+set -euo pipefail
+
+cd "$(dirname "$0")"
+
+IMAGE=picoruby-kernel-tutorial
+
+# カーネルは x86_64 向けで、gcc はコンテナと同じアーキテクチャ向けのコードを
+# 出すので、イメージは x86_64（linux/amd64）で作る。ARM の Mac などでは
+# Docker がエミュレーションで動かす。
+PLATFORM=linux/amd64
+
+# イメージの中身を決めるファイル（Dockerfile と deps/ の中身）のハッシュをタグにする。
+# どれかが変わるとタグも変わるので、そのときだけイメージが作り直される。
+TAG=$(cat Dockerfile $(find deps -type f 2>/dev/null | sort) | sha256sum | cut -c1-12)
+
+if [[ "${1:-}" == "--rebuild" ]]; then
+  shift
+  docker build --platform "$PLATFORM" --no-cache -t "$IMAGE:$TAG" .
+elif ! docker image inspect "$IMAGE:$TAG" >/dev/null 2>&1; then
+  echo "Docker イメージ $IMAGE:$TAG を作成します（初回は数分かかります）"
+  docker build --platform "$PLATFORM" -t "$IMAGE:$TAG" .
+fi
+
+# 端末から実行されたときだけ -it を付ける（CI などでも動くように）。
+tty_flags=()
+if [[ -t 0 && -t 1 ]]; then
+  tty_flags=(-it)
+fi
+
+# -u でホストと同じユーザーとして実行し、build/ にできるファイルの
+# 持ち主がホストのユーザーになるようにする。
+exec docker run --rm --platform "$PLATFORM" "${tty_flags[@]}" \
+  -v "$PWD":/work -w /work \
+  -u "$(id -u):$(id -g)" -e HOME=/tmp \
+  "$IMAGE:$TAG" "${@:-bash}"

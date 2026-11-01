@@ -1,0 +1,8 @@
+[book]
+title = "PicoRuby と C でカーネルを書く"
+description = "C で起動する最小のカーネルに PicoRuby の VM を載せ、Ruby で Hello World を表示するチュートリアル"
+language = "ja"
+src = "src"
+
+[output.html]
+git-repository-url = "https://github.com/S-H-GAMELINKS/picoruby-kernel-tutorial"
